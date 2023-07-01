@@ -1,0 +1,75 @@
+<!DOCTYPE html>
+<html>
+  <body>
+    <button id="connect-button">Connect</button>
+    <button id="disconnect-button">Disconnect</button>
+
+    <script>
+      let port;
+      let reader;
+      let readableStreamClosed;
+      document
+        .getElementById("connect-button")
+        .addEventListener("click", async () => {
+          // Prompt user to select any serial port.
+          port = await navigator.serial.requestPort();
+          console.log("driver -> connect -> info -> ", port.getInfo());
+
+          await port.open({ baudRate: 9600 });
+          const textDecoder = new TextDecoderStream();
+          readableStreamClosed = port.readable.pipeTo(textDecoder.writable);
+
+          reader = textDecoder.readable.getReader();
+          let signals = await port.getSignals();
+          console.log("driver -> connect -> signals", signals);
+          try {
+            while (true) {
+              const { value, done } = await reader.read();
+              if (done) {
+                // |reader| has been canceled.
+                break;
+              }
+              console.log("driver -> connect -> read -> ", value);
+            }
+          } catch (error) {
+            console.error("driver -> connect -> error -> ", error);
+          } finally {
+            console.log("driver -> connect -> releasing lock");
+            reader.releaseLock();
+          }
+        });
+
+      document
+        .getElementById("disconnect-button")
+        .addEventListener("click", async () => {
+          const textEncoder = new TextEncoderStream();
+          const writer = textEncoder.writable.getWriter();
+          const writableStreamClosed = textEncoder.readable.pipeTo(
+            port.writable
+          );
+
+          try {
+            console.log("driver -> disconnect -> closing");
+            reader.cancel();
+            await readableStreamClosed.catch(() => {
+              /* Ignore the error */
+            });
+            writer.close();
+            await writableStreamClosed;
+
+            await port.close();
+          } catch (error) {
+            console.error("driver -> disconnect -> error -> ", error);
+          }
+        });
+
+      navigator.serial.addEventListener("connect", (event) => {
+        console.log("driver -> connect listener -> ", event);
+      });
+
+      navigator.serial.addEventListener("disconnect", (event) => {
+        console.log("driver -> disconnect listener -> ", event);
+      });
+    </script>
+  </body>
+</html>
