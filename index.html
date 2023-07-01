@@ -11,18 +11,18 @@
       document
         .getElementById("connect-button")
         .addEventListener("click", async () => {
-          // Prompt user to select any serial port.
-          port = await navigator.serial.requestPort();
-          console.log("driver -> connect -> info -> ", port.getInfo());
-
-          await port.open({ baudRate: 9600 });
-          const textDecoder = new TextDecoderStream();
-          readableStreamClosed = port.readable.pipeTo(textDecoder.writable);
-
-          reader = textDecoder.readable.getReader();
-          let signals = await port.getSignals();
-          console.log("driver -> connect -> signals", signals);
           try {
+            // Prompt user to select any serial port.
+            port = await navigator.serial.requestPort();
+            console.log("driver -> connect -> info -> ", port.getInfo());
+
+            await port.open({ baudRate: 9600 });
+            const textDecoder = new TextDecoderStream();
+            readableStreamClosed = port.readable.pipeTo(textDecoder.writable);
+
+            reader = textDecoder.readable.getReader();
+            let signals = await port.getSignals();
+            console.log("driver -> connect -> signals", signals);
             while (true) {
               const { value, done } = await reader.read();
               if (done) {
@@ -33,6 +33,7 @@
             }
           } catch (error) {
             console.error("driver -> connect -> error -> ", error);
+            alert(JSON.stringify(error));
           } finally {
             console.log("driver -> connect -> releasing lock");
             reader.releaseLock();
@@ -42,13 +43,12 @@
       document
         .getElementById("disconnect-button")
         .addEventListener("click", async () => {
-          const textEncoder = new TextEncoderStream();
-          const writer = textEncoder.writable.getWriter();
-          const writableStreamClosed = textEncoder.readable.pipeTo(
-            port.writable
-          );
-
           try {
+            const textEncoder = new TextEncoderStream();
+            const writer = textEncoder.writable.getWriter();
+            const writableStreamClosed = textEncoder.readable.pipeTo(
+              port.writable
+            );
             console.log("driver -> disconnect -> closing");
             reader.cancel();
             await readableStreamClosed.catch(() => {
@@ -60,6 +60,7 @@
             await port.close();
           } catch (error) {
             console.error("driver -> disconnect -> error -> ", error);
+            alert(JSON.stringify(error));
           }
         });
 
